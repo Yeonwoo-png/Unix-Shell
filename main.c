@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 
 void tokenize(char arr[], char *args[]);
+void change_directory(char *path);
 
 int main()
 {
@@ -17,8 +18,6 @@ int main()
         printf("myshell> ");
         fflush(stdout);
 
-        //when fget runs and the user types something, the input stream attaches a \n at the end
-        //a C string is just an array of characters that has a \0 at the end
         read = getline(&buff, &size, stdin);
         if(read == -1)
         {
@@ -38,6 +37,14 @@ int main()
         if(array[0] != NULL && strcmp(array[0], "exit") == 0)
         {
             break;
+        }
+
+        //once the cd function is handled, continue will loop back to the top to make sure
+        //fork() doesnt start running
+        if(array[0] != NULL && strcmp(array[0], "cd") == 0)
+        {
+            change_directory(array[1]);
+            continue;
         }
 
         pid_t p = fork();
@@ -80,4 +87,23 @@ void tokenize(char arr[], char *args[])
     args[i] = NULL;
 
     return;
+}
+
+void change_directory(char *path)
+{
+    char *home_dir = getenv("HOME");
+    if (home_dir == NULL)
+    {
+        printf("HOME environment variable is not set\n");
+        return;
+    }
+
+    if(path == NULL || strcmp(path, "~") == 0)
+    {
+        chdir(home_dir);
+    }
+    else if(chdir(path) != 0)
+    {
+        perror("chdir failed");
+    }
 }
