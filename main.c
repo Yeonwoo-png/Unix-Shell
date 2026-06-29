@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
+void exit_shell(char *args[]);
 void tokenize(char arr[], char *args[]);
 void change_directory(char *path);
+void print_working_directory();
 
 int main()
 {
@@ -36,7 +38,8 @@ int main()
 
         if(array[0] != NULL && strcmp(array[0], "exit") == 0)
         {
-            break;
+            exit_shell(array);
+            continue;
         }
 
         //once the cd function is handled, continue will loop back to the top to make sure
@@ -44,6 +47,12 @@ int main()
         if(array[0] != NULL && strcmp(array[0], "cd") == 0)
         {
             change_directory(array[1]);
+            continue;
+        }
+
+        if (array[0] != NULL && strcmp(array[0], "pwd") == 0)
+        {
+            print_working_directory();
             continue;
         }
 
@@ -68,6 +77,18 @@ int main()
     free(buff);
 
     return 0;
+}
+
+void exit_shell(char *args[])
+{
+    if(args[1] != NULL)
+    {
+        printf("exit does not take any arguments\n");
+    }
+    else
+    {
+        exit(0);
+    }
 }
 
 void tokenize(char arr[], char *args[])
@@ -105,5 +126,18 @@ void change_directory(char *path)
     else if(chdir(path) != 0)
     {
         perror("chdir failed");
+    }
+}
+
+void print_working_directory()
+{
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+    {
+        printf("%s\n", cwd);
+    }
+    else
+    {
+        perror("getcwd failed");
     }
 }
