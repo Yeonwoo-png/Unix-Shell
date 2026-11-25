@@ -19,6 +19,13 @@ typedef struct {
     size_t capacity;
 } TokenList;
 
+typedef enum {
+    LEX_OK,
+    LEX_ERR_MEMORY,
+    LEX_ERR_UNTERMINATED_QUOTE
+} LexStatus;
+
+LexStatus lexer_tokenize(const char *input, TokenList *out);
 void token_list_destroy(TokenList *tokens);
 
 #endif

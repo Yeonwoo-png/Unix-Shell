@@ -1,5 +1,6 @@
 #include "lexer.h"
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -125,4 +126,146 @@ void token_list_destroy(TokenList *tokens)
     tokens->data = NULL;
     tokens->size = 0;
     tokens->capacity = 0;
+}
+
+static bool finish_word(WordBuffer *word, TokenList *tokens, bool *word_started)
+{
+    if (!*word_started) {
+        return true;
+    }
+
+    if (word->data == NULL)
+    {
+        char *temp = malloc(1);
+
+        if (temp == NULL) {
+            return false;
+        }
+
+        temp[0] = '\0';
+        word->data = temp;
+        word->capacity = 1;
+    }
+
+    Token token = {
+        .type = TOKEN_WORD,
+        .text = word->data
+    };
+
+    if (!token_list_push(tokens, token)) {
+        return false;
+    }
+
+    word->data = NULL;
+    word->size = 0;
+    word->capacity = 0;
+    *word_started = false;
+
+    return true;
+}
+
+LexStatus lexer_tokenize(const char *input, TokenList *out)
+{
+    WordBuffer word = {0};
+    LexerState state = LEX_STATE_NORMAL;
+    LexStatus status = LEX_ERR_MEMORY;
+    bool word_started = false;
+    size_t i = 0;
+
+    *out = (TokenList){0};
+
+    while (input[i] != '\0')
+    {
+        char c = input[i];
+
+        switch (state)
+        {
+            case LEX_STATE_NORMAL:
+                if (c == '"')
+                {
+                    state = LEX_STATE_DOUBLE_QUOTE;
+                    word_started = true;
+                }
+                else if (c == '\'')
+                {
+                    state = LEX_STATE_SINGLE_QUOTE;
+                    word_started = true;
+                }
+                else if (isspace((unsigned char)c))
+                {
+                    if (!finish_word(&word, out, &word_started)) {
+                        goto cleanup;
+                    }
+                }
+                else if (c == '|')
+                {
+                    if (!finish_word(&word, out, &word_started)) {
+                        goto cleanup;
+                    }
+
+                    Token token = {
+                        .type = TOKEN_PIPE,
+                        .text = NULL
+                    };
+
+                    if (!token_list_push(out, token)) {
+                        goto cleanup;
+                    }
+                }
+                else
+                {
+                    word_started = true;
+
+                    if (!word_buffer_push(&word, c)) {
+                        goto cleanup;
+                    }
+                }
+                break;
+
+            case LEX_STATE_SINGLE_QUOTE:
+                if (c == '\'')
+                {
+                    state = LEX_STATE_NORMAL;
+                }
+                else
+                {
+                    if (!word_buffer_push(&word, c)) {
+                        goto cleanup;
+                    }
+                }
+                break;
+
+            case LEX_STATE_DOUBLE_QUOTE:
+                if (c == '"')
+                {
+                    state = LEX_STATE_NORMAL;
+                }
+                else
+                {
+                    if (!word_buffer_push(&word, c)) {
+                        goto cleanup;
+                    }
+                }
+                break;
+        }
+
+        i++;
+    }
+
+    if (state != LEX_STATE_NORMAL)
+    {
+        status = LEX_ERR_UNTERMINATED_QUOTE;
+        goto cleanup;
+    }
+
+    if (!finish_word(&word, out, &word_started)) {
+        goto cleanup;
+    }
+
+    return LEX_OK;
+
+cleanup:
+    free(word.data);
+    token_list_destroy(out);
+    return status;
 }
