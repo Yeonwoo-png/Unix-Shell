@@ -5,7 +5,10 @@
 
 typedef enum {
     TOKEN_WORD,
-    TOKEN_PIPE
+    TOKEN_PIPE,
+    TOKEN_REDIRECT_IN,
+    TOKEN_REDIRECT_OUT,
+    TOKEN_REDIRECT_APPEND
 } TokenType;
 
 typedef struct {
@@ -22,7 +25,8 @@ typedef struct {
 typedef enum {
     LEX_OK,
     LEX_ERR_MEMORY,
-    LEX_ERR_UNTERMINATED_QUOTE
+    LEX_ERR_UNTERMINATED_QUOTE,
+    LEX_ERR_INCOMPLETE_ESCAPE
 } LexStatus;
 
 LexStatus lexer_tokenize(const char *input, TokenList *out);

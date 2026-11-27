@@ -181,7 +181,23 @@ LexStatus lexer_tokenize(const char *input, TokenList *out)
         switch (state)
         {
             case LEX_STATE_NORMAL:
-                if (c == '"')
+                if (c == '\\')
+                {
+                    i++;
+
+                    if (input[i] == '\0')
+                    {
+                        status = LEX_ERR_INCOMPLETE_ESCAPE;
+                        goto cleanup;
+                    }
+
+                    word_started = true;
+
+                    if (!word_buffer_push(&word, input[i])) {
+                        goto cleanup;
+                    }
+                }
+                else if (c == '"')
                 {
                     state = LEX_STATE_DOUBLE_QUOTE;
                     word_started = true;
@@ -205,6 +221,37 @@ LexStatus lexer_tokenize(const char *input, TokenList *out)
 
                     Token token = {
                         .type = TOKEN_PIPE,
+                        .text = NULL
+                    };
+
+                    if (!token_list_push(out, token)) {
+                        goto cleanup;
+                    }
+                }
+                else if (c == '<' || c == '>')
+                {
+                    if (!finish_word(&word, out, &word_started)) {
+                        goto cleanup;
+                    }
+
+                    TokenType type;
+
+                    if (c == '<')
+                    {
+                        type = TOKEN_REDIRECT_IN;
+                    }
+                    else if (input[i + 1] == '>')
+                    {
+                        type = TOKEN_REDIRECT_APPEND;
+                        i++;
+                    }
+                    else
+                    {
+                        type = TOKEN_REDIRECT_OUT;
+                    }
+
+                    Token token = {
+                        .type = type,
                         .text = NULL
                     };
 
@@ -236,7 +283,30 @@ LexStatus lexer_tokenize(const char *input, TokenList *out)
                 break;
 
             case LEX_STATE_DOUBLE_QUOTE:
-                if (c == '"')
+                if (c == '\\')
+                {
+                    if (input[i + 1] == '\0')
+                    {
+                        status = LEX_ERR_INCOMPLETE_ESCAPE;
+                        goto cleanup;
+                    }
+
+                    if (input[i + 1] == '"' || input[i + 1] == '\\')
+                    {
+                        i++;
+
+                        if (!word_buffer_push(&word, input[i])) {
+                            goto cleanup;
+                        }
+                    }
+                    else
+                    {
+                        if (!word_buffer_push(&word, c)) {
+                            goto cleanup;
+                        }
+                    }
+                }
+                else if (c == '"')
                 {
                     state = LEX_STATE_NORMAL;
                 }
